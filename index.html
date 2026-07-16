@@ -607,6 +607,7 @@
 (function(){
   const totalSteps = 5;
   let current = 1;
+  let currentReference = null;
   const panels = document.querySelectorAll('.step-panel');
   const nextBtn = document.getElementById('nextBtn');
   const backBtn = document.getElementById('backBtn');
@@ -716,6 +717,10 @@
     document.querySelector('.flightpath').style.opacity = '.4';
     const panel = document.getElementById('processingPanel');
     panel.classList.add('active');
+
+    currentReference = 'JAPA-' + Date.now();
+    captureLead();
+
     const lines = ["CHECKING ELIGIBILITY…","MATCHING VISA PATHWAYS…","BUILDING YOUR TIMELINE…","ALMOST READY…"];
     let i=0;
     const lineEl = document.getElementById('processingLine');
@@ -728,6 +733,24 @@
       panel.classList.remove('active');
       showResult();
     },2400);
+  }
+
+  function captureLead(){
+    const val = (name)=> (document.querySelector('input[name="'+name+'"]:checked')||{}).value || '';
+    const text = (name)=> (document.querySelector('input[name="'+name+'"]')||{}).value?.trim() || '';
+    fetch('/api/capture-lead', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        reference: currentReference,
+        fullname: text('fullname'),
+        email: text('email'),
+        whatsapp: text('whatsapp'),
+        country: val('country'),
+        route: val('route'),
+        timeline: val('timeline')
+      })
+    }).catch(()=>{ /* non-blocking — don't interrupt the user's flow */ });
   }
 
   function showResult(){
@@ -750,7 +773,7 @@
 
   // ---------- PAYSTACK ----------
   // TODO: replace with your real Paystack PUBLIC key (starts with pk_test_ or pk_live_)
-  const PAYSTACK_PUBLIC_KEY = "pk_test_4cc2d56403ad2130cb8be9bda6760f924a84813d";
+  const PAYSTACK_PUBLIC_KEY = "pk_test_REPLACE_WITH_YOUR_PUBLIC_KEY";
   const GUIDE_PRICE_KOBO = 2500000; // ₦25,000 in kobo — Paystack always takes the smallest currency unit
 
   function launchPaystack(){
@@ -778,7 +801,7 @@
       email: email,
       amount: GUIDE_PRICE_KOBO,
       currency: 'NGN',
-      ref: 'JAPA-' + Date.now(),
+      ref: currentReference || ('JAPA-' + Date.now()),
       metadata: {
         custom_fields: [
           {display_name:"Full Name", variable_name:"full_name", value: fullname},

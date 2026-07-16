@@ -330,6 +330,7 @@
     *{animation-duration:.01ms !important; transition-duration:.01ms !important;}
   }
 </style>
+<script src="https://js.paystack.co/v1/inline.js"></script>
 </head>
 <body>
 
@@ -727,10 +728,82 @@
     document.getElementById('resultPanel').scrollIntoView({behavior:'smooth', block:'center'});
   }
 
-  document.getElementById('unlockBtn').addEventListener('click', ()=>{
-    // TODO: wire this to your Paystack/Flutterwave checkout, then trigger the PDF download
-    alert("Hook this button up to your Paystack or Flutterwave checkout — on successful payment, trigger the guide download or redirect to the download link.");
-  });
+  // ---------- PAYSTACK ----------
+  // TODO: replace with your real Paystack PUBLIC key (starts with pk_test_ or pk_live_)
+  const PAYSTACK_PUBLIC_KEY = "pk_test_REPLACE_WITH_YOUR_PUBLIC_KEY";
+  const GUIDE_PRICE_KOBO = 2500000; // ₦25,000 in kobo — Paystack always takes the smallest currency unit
+
+  function launchPaystack(){
+    const email = (document.querySelector('input[name="email"]')||{}).value?.trim();
+    const fullname = (document.querySelector('input[name="fullname"]')||{}).value?.trim() || '';
+    const whatsapp = (document.querySelector('input[name="whatsapp"]')||{}).value?.trim() || '';
+    const country = document.querySelector('input[name="country"]:checked');
+    const route = document.querySelector('input[name="route"]:checked');
+
+    if(!email){
+      alert("We couldn't find your email — please scroll up and check your contact details.");
+      return;
+    }
+    if(typeof PaystackPop === 'undefined'){
+      alert("Payment couldn't load. Please check your internet connection and try again.");
+      return;
+    }
+
+    const handler = PaystackPop.setup({
+      key: PAYSTACK_PUBLIC_KEY,
+      email: email,
+      amount: GUIDE_PRICE_KOBO,
+      currency: 'NGN',
+      ref: 'JAPA-' + Date.now(),
+      metadata: {
+        custom_fields: [
+          {display_name:"Full Name", variable_name:"full_name", value: fullname},
+          {display_name:"WhatsApp", variable_name:"whatsapp", value: whatsapp},
+          {display_name:"Destination", variable_name:"destination", value: country ? country.value : ''},
+          {display_name:"Route", variable_name:"route", value: route ? route.value : ''}
+        ]
+      },
+      callback: function(response){
+        verifyAndDeliver(response.reference);
+      },
+      onClose: function(){
+        // user closed the popup without paying — no action needed
+      }
+    });
+    handler.openIframe();
+  }
+
+  function verifyAndDeliver(reference){
+    const btn = document.getElementById('unlockBtn');
+    btn.disabled = true;
+    btn.textContent = "Confirming payment…";
+
+    fetch('/api/verify-payment', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ reference })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if(data.verified){
+        btn.textContent = "Payment confirmed ✓";
+        // TODO: once your delivery workflow (n8n → email + WhatsApp) is wired up,
+        // this is where you'd show the real download link or redirect to a thank-you page.
+        alert("Payment confirmed! Your guide is on its way to your email and WhatsApp.");
+      } else {
+        btn.disabled = false;
+        btn.textContent = "Unlock & Download My Guide 🔓";
+        alert("We couldn't confirm your payment yet. If you were charged, please contact support with your reference: " + reference);
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = "Unlock & Download My Guide 🔓";
+      alert("Something went wrong confirming your payment. Please try again.");
+    });
+  }
+
+  document.getElementById('unlockBtn').addEventListener('click', launchPaystack);
 
   // Urgency: countdown timer (resets each page load — soft urgency, not tied to real inventory)
   (function countdown(){

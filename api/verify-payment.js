@@ -27,6 +27,8 @@ export default async function handler(req, res) {
     const isCorrectAmount = tx && tx.amount === GUIDE_PRICE_KOBO;
 
     if (!isSuccess || !isCorrectAmount) {
+      console.log('Verification failed. Paystack response:', JSON.stringify(data));
+      console.log('isSuccess:', isSuccess, 'isCorrectAmount:', isCorrectAmount, 'tx.status:', tx && tx.status, 'tx.amount:', tx && tx.amount);
       return res.status(200).json({ verified: false });
     }
 

@@ -39,11 +39,15 @@ export default async function handler(req, res) {
     const whatsapp = fields.whatsapp || '';
 
     // Run all three side effects in parallel — none of them should block the user's response
-    await Promise.allSettled([
+    const results = await Promise.allSettled([
       markPaidInSheet(reference, fullname, email, whatsapp),
       sendGuideEmail(email, fullname),
-      whatsapp ? sendGuideWhatsApp(whatsapp, fullname) : Promise.resolve()
+      whatsapp ? sendGuideWhatsApp(whatsapp, fullname) : Promise.resolve({ skipped: true })
     ]);
+    const [sheetResult, emailResult, whatsappResult] = results;
+    console.log('markPaidInSheet result:', sheetResult.status, sheetResult.value ?? sheetResult.reason);
+    console.log('sendGuideEmail result:', emailResult.status, emailResult.value ?? emailResult.reason);
+    console.log('sendGuideWhatsApp result:', whatsappResult.status, whatsappResult.value ?? whatsappResult.reason);
 
     return res.status(200).json({ verified: true, email, reference });
   } catch (err) {
@@ -65,7 +69,7 @@ async function markPaidInSheet(reference, fullname, email, whatsapp) {
 }
 
 async function sendGuideEmail(email, fullname) {
-  return fetch('https://api.resend.com/emails', {
+  const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
@@ -84,6 +88,11 @@ async function sendGuideEmail(email, fullname) {
       `
     })
   });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new Error(`Resend ${r.status}: ${JSON.stringify(body)}`);
+  }
+  return body;
 }
 
 async function sendGuideWhatsApp(whatsappNumber, fullname) {

@@ -198,6 +198,11 @@
     background:#fff;color:var(--ink);
   }
   input:focus,select:focus{border-color:var(--green);}
+  input.invalid{border-color:var(--red);}
+  .field-error{
+    display:none;color:var(--red);font-size:12.5px;margin-top:6px;font-weight:500;
+  }
+  .field-error.show{display:block;}
 
   .pass-foot{
     padding:20px 28px 28px;display:flex;justify-content:space-between;align-items:center;gap:14px;
@@ -521,7 +526,8 @@
             </div>
             <div class="q">
               <label class="qlabel">Email address<span class="qhint">Your roadmap and receipt go here.</span></label>
-              <input type="email" name="email" placeholder="you@example.com" required>
+              <input type="email" name="email" placeholder="you@example.com" required id="emailInput">
+              <span class="field-error" id="emailError">Please enter a valid email address (e.g. you@example.com)</span>
             </div>
             <div class="q">
               <label class="qlabel">WhatsApp number</label>
@@ -637,6 +643,10 @@
     });
   }
 
+  function isValidEmail(value){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  }
+
   function validateStep(){
     const panel = document.querySelector('.step-panel[data-step="'+current+'"]');
     const groups = {};
@@ -647,12 +657,22 @@
       if(inp.hasAttribute('required') || panel.dataset.step==="2" || panel.dataset.step==="5"){
         if(!inp.value.trim()) textsOk = false;
       }
+      if(inp.type === 'email' && inp.value.trim() && !isValidEmail(inp.value)){
+        textsOk = false;
+      }
     });
     return radiosOk && textsOk;
   }
 
   function refreshNextState(){
     nextBtn.disabled = !validateStep();
+    const emailInput = document.getElementById('emailInput');
+    const emailError = document.getElementById('emailError');
+    if(emailInput && emailError){
+      const invalid = emailInput.value.trim().length > 0 && !isValidEmail(emailInput.value);
+      emailInput.classList.toggle('invalid', invalid);
+      emailError.classList.toggle('show', invalid);
+    }
   }
 
   document.querySelectorAll('.opt input').forEach(inp=>{
@@ -740,8 +760,10 @@
     const country = document.querySelector('input[name="country"]:checked');
     const route = document.querySelector('input[name="route"]:checked');
 
-    if(!email){
-      alert("We couldn't find your email — please scroll up and check your contact details.");
+    if(!email || !isValidEmail(email)){
+      alert("We need a valid email address before payment — please scroll up and check the email field.");
+      const emailInput = document.getElementById('emailInput');
+      if(emailInput) emailInput.scrollIntoView({behavior:'smooth', block:'center'});
       return;
     }
     if(typeof PaystackPop === 'undefined'){
@@ -749,7 +771,9 @@
       return;
     }
 
-    const handler = PaystackPop.setup({
+    let handler;
+    try{
+      handler = PaystackPop.setup({
       key: PAYSTACK_PUBLIC_KEY,
       email: email,
       amount: GUIDE_PRICE_KOBO,
@@ -769,7 +793,12 @@
       onClose: function(){
         // user closed the popup without paying — no action needed
       }
-    });
+      });
+    } catch(err){
+      console.error('Paystack setup failed:', err);
+      alert("We couldn't start the checkout. Please double-check your email address and try again.");
+      return;
+    }
     handler.openIframe();
   }
 

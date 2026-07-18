@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { reference, fullname, email, whatsapp, country, route, timeline } = req.body || {};
+  const { reference, fullname, email, country, route, timeline, concern } = req.body || {};
 
   if (!reference || !email) {
     return res.status(400).json({ error: 'Missing reference or email' });
@@ -24,10 +24,10 @@ export default async function handler(req, res) {
         reference,
         fullname,
         email,
-        whatsapp,
         country,
         route,
-        timeline
+        timeline,
+        concern
       })
     });
     return res.status(200).json({ ok: true });

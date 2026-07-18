@@ -46,7 +46,12 @@ export default async function handler(req, res) {
     console.log('markPaidInSheet result:', sheetResult.status, sheetResult.value ?? sheetResult.reason);
     console.log('sendGuideEmail result:', emailResult.status, emailResult.value ?? emailResult.reason);
 
-    return res.status(200).json({ verified: true, email, reference });
+    return res.status(200).json({
+      verified: true,
+      email,
+      reference,
+      downloadUrl: process.env.GUIDE_DOWNLOAD_URL
+    });
   } catch (err) {
     console.error('Paystack verification failed:', err);
     return res.status(500).json({ error: 'Verification failed' });

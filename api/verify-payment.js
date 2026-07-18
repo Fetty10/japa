@@ -1,7 +1,7 @@
 // /api/verify-payment.js
 // Verifies the Paystack transaction server-side, then delivers the guide by
-// email (Resend) and WhatsApp (Meta Cloud API), and marks the lead as paid
-// in Google Sheets. Never trust the client-side "success" callback alone.
+// email (Resend), and marks the lead as paid in Google Sheets. Never trust
+// the client-side "success" callback alone.
 
 const GUIDE_PRICE_KOBO = 2500000; // ₦25,000 — must match the amount charged on the frontend
 
@@ -36,18 +36,15 @@ export default async function handler(req, res) {
     const fields = {};
     (tx.metadata?.custom_fields || []).forEach(f => { fields[f.variable_name] = f.value; });
     const fullname = fields.full_name || 'there';
-    const whatsapp = fields.whatsapp || '';
 
-    // Run all three side effects in parallel — none of them should block the user's response
+    // Run side effects in parallel — neither should block the user's response
     const results = await Promise.allSettled([
-      markPaidInSheet(reference, fullname, email, whatsapp),
-      sendGuideEmail(email, fullname),
-      whatsapp ? sendGuideWhatsApp(whatsapp, fullname) : Promise.resolve({ skipped: true })
+      markPaidInSheet(reference, fullname, email),
+      sendGuideEmail(email, fullname)
     ]);
-    const [sheetResult, emailResult, whatsappResult] = results;
+    const [sheetResult, emailResult] = results;
     console.log('markPaidInSheet result:', sheetResult.status, sheetResult.value ?? sheetResult.reason);
     console.log('sendGuideEmail result:', emailResult.status, emailResult.value ?? emailResult.reason);
-    console.log('sendGuideWhatsApp result:', whatsappResult.status, whatsappResult.value ?? whatsappResult.reason);
 
     return res.status(200).json({ verified: true, email, reference });
   } catch (err) {
@@ -56,14 +53,14 @@ export default async function handler(req, res) {
   }
 }
 
-async function markPaidInSheet(reference, fullname, email, whatsapp) {
+async function markPaidInSheet(reference, fullname, email) {
   return fetch(process.env.GAS_WEB_APP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       secret: process.env.GAS_SECRET,
       action: 'markPaid',
-      reference, fullname, email, whatsapp
+      reference, fullname, email
     })
   });
 }
@@ -93,49 +90,4 @@ async function sendGuideEmail(email, fullname) {
     throw new Error(`Resend ${r.status}: ${JSON.stringify(body)}`);
   }
   return body;
-}
-
-async function sendGuideWhatsApp(whatsappNumber, fullname) {
-  const to = normalizePhone(whatsappNumber);
-  if (!to) return;
-
-  // Requires an approved WhatsApp message template (business-initiated messages
-  // outside a 24h customer session must use a template). Example template body:
-  // "Hi {{1}}, your Japa Roadmap is ready! Download it here: {{2}}"
-  return fetch(
-    `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'template',
-        template: {
-          name: process.env.WHATSAPP_TEMPLATE_NAME || 'guide_ready',
-          language: { code: 'en' },
-          components: [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text', text: fullname },
-                { type: 'text', text: process.env.GUIDE_DOWNLOAD_URL }
-              ]
-            }
-          ]
-        }
-      })
-    }
-  );
-}
-
-function normalizePhone(raw) {
-  // Converts a Nigerian local number (0803...) into E.164 (234803...)
-  const digits = String(raw).replace(/\D/g, '');
-  if (digits.startsWith('0')) return '234' + digits.slice(1);
-  if (digits.startsWith('234')) return digits;
-  return digits;
 }

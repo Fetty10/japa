@@ -565,7 +565,7 @@
         <div class="result-summary" id="resultSummary"></div>
       </div>
       <div class="lock-panel">
-        <div class="lock-badge">🔒 Locked — 12 page personalised guide</div>
+        <div class="lock-badge">🔒 Locked — 26 page personalised guide</div>
         <div class="blur-lines">
           <div class="bl" style="width:60%"></div>
           <div class="bl"></div>
@@ -580,13 +580,13 @@
 
         <div class="urgency-box">
           <div class="urgency-row">
-            <span class="urgency-label">⏳ Price locks in</span>
+            <span class="urgency-label">⏳ Price will change in the next</span>
             <span class="countdown" id="countdown">14:59</span>
           </div>
           <div class="urgency-row">
-            <span class="scarcity-text">Only <strong id="spotsLeft">41</strong> guides left at this price today</span>
+            <span class="scarcity-text">Only <strong id="spotsLeft">10</strong> guides left at this price today</span>
           </div>
-          <div class="spots-bar"><div class="spots-fill" id="spotsFill" style="width:82%"></div></div>
+          <div class="spots-bar"><div class="spots-fill" id="spotsFill" style="width:100%"></div></div>
         </div>
 
         <button type="button" class="unlock-btn" id="unlockBtn">Unlock &amp; Download My Guide 🔓</button>
@@ -879,13 +879,14 @@
     const el = document.getElementById('spotsLeft');
     const fill = document.getElementById('spotsFill');
     if(!el || !fill) return;
-    let spots = 41;
-    const floor = 12;
+    const startSpots = 10;
+    let spots = startSpots;
+    const floor = 3;
     setInterval(()=>{
       if(spots <= floor) return;
       spots--;
       el.textContent = spots;
-      fill.style.width = Math.max(20, (spots/50)*100)+"%";
+      fill.style.width = Math.max(20, (spots/startSpots)*100)+"%";
     },40000);
   })();
 

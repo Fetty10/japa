@@ -3,6 +3,10 @@
 // Finds leads who finished the form but never paid, and haven't been
 // reminded yet, then sends one follow-up email each.
 //
+// Note: the Google Sheet claims each row the moment it's listed (see
+// google-apps-script.js), so it's safe if this runs twice close together —
+// a second run simply won't see rows the first one already claimed.
+//
 // Protect this endpoint with CRON_SECRET so randoms on the internet can't
 // trigger it — call it like:
 //   https://your-site.vercel.app/api/send-reminders?secret=YOUR_CRON_SECRET
@@ -22,28 +26,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ reminded: 0 });
     }
 
-    let reminded = 0;
-    for (const lead of leads) {
-      await Promise.allSettled([
-        sendReminderEmail(lead),
-        markReminded(lead.reference)
-      ]);
-      reminded++;
-    }
+    const results = await Promise.allSettled(leads.map(sendReminderEmail));
+    const reminded = results.filter(r => r.status === 'fulfilled').length;
 
-    return res.status(200).json({ reminded });
+    return res.status(200).json({ reminded, total: leads.length });
   } catch (err) {
     console.error('send-reminders failed:', err);
     return res.status(500).json({ error: 'Failed to send reminders' });
   }
-}
-
-async function markReminded(reference) {
-  return fetch(process.env.GAS_WEB_APP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret: process.env.GAS_SECRET, action: 'markReminded', reference })
-  });
 }
 
 async function sendReminderEmail(lead) {

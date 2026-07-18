@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await fetch(process.env.GAS_WEB_APP_URL, {
+    const r = await fetch(process.env.GAS_WEB_APP_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -30,6 +30,14 @@ export default async function handler(req, res) {
         concern
       })
     });
+    const body = await r.json().catch(() => ({}));
+    console.log('capture-lead → Apps Script response:', JSON.stringify(body));
+
+    if (body.error) {
+      console.error('capture-lead: Apps Script rejected the request:', body.error);
+      return res.status(200).json({ ok: false, reason: body.error });
+    }
+
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('capture-lead failed:', err);

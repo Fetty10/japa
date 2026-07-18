@@ -530,8 +530,13 @@
               <span class="field-error" id="emailError">Please enter a valid email address (e.g. you@example.com)</span>
             </div>
             <div class="q">
-              <label class="qlabel">WhatsApp number</label>
-              <input type="tel" name="whatsapp" placeholder="e.g. 0803 123 4567" required>
+              <label class="qlabel">What worries you most about the process?</label>
+              <div class="opt-grid" data-name="concern">
+                <label class="opt"><input type="radio" name="concern" value="Rejection">Getting rejected</label>
+                <label class="opt"><input type="radio" name="concern" value="Money">Not having enough money</label>
+                <label class="opt"><input type="radio" name="concern" value="Where to start">Not knowing where to start</label>
+                <label class="opt"><input type="radio" name="concern" value="Scams">Getting scammed by agents</label>
+              </div>
             </div>
           </div>
 
@@ -588,7 +593,7 @@
         <div class="pay-note">SECURE CHECKOUT · CARD OR BANK TRANSFER</div>
         <div class="guarantee">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-          <span>Instant PDF download after payment, straight to your email and WhatsApp.</span>
+          <span>Instant PDF download after payment, straight to your email.</span>
         </div>
       </div>
     </div>
@@ -745,10 +750,10 @@
         reference: currentReference,
         fullname: text('fullname'),
         email: text('email'),
-        whatsapp: text('whatsapp'),
         country: val('country'),
         route: val('route'),
-        timeline: val('timeline')
+        timeline: val('timeline'),
+        concern: val('concern')
       })
     }).catch(()=>{ /* non-blocking — don't interrupt the user's flow */ });
   }
@@ -773,13 +778,12 @@
 
   // ---------- PAYSTACK ----------
   // TODO: replace with your real Paystack PUBLIC key (starts with pk_test_ or pk_live_)
-  const PAYSTACK_PUBLIC_KEY = "pk_test_4cc2d56403ad2130cb8be9bda6760f924a84813d";
+  const PAYSTACK_PUBLIC_KEY = "pk_test_REPLACE_WITH_YOUR_PUBLIC_KEY";
   const GUIDE_PRICE_KOBO = 2500000; // ₦25,000 in kobo — Paystack always takes the smallest currency unit
 
   function launchPaystack(){
     const email = (document.querySelector('input[name="email"]')||{}).value?.trim();
     const fullname = (document.querySelector('input[name="fullname"]')||{}).value?.trim() || '';
-    const whatsapp = (document.querySelector('input[name="whatsapp"]')||{}).value?.trim() || '';
     const country = document.querySelector('input[name="country"]:checked');
     const route = document.querySelector('input[name="route"]:checked');
 
@@ -805,7 +809,6 @@
       metadata: {
         custom_fields: [
           {display_name:"Full Name", variable_name:"full_name", value: fullname},
-          {display_name:"WhatsApp", variable_name:"whatsapp", value: whatsapp},
           {display_name:"Destination", variable_name:"destination", value: country ? country.value : ''},
           {display_name:"Route", variable_name:"route", value: route ? route.value : ''}
         ]
@@ -839,9 +842,9 @@
     .then(data => {
       if(data.verified){
         btn.textContent = "Payment confirmed ✓";
-        // TODO: once your delivery workflow (n8n → email + WhatsApp) is wired up,
+        // TODO: once your delivery workflow is fully wired up,
         // this is where you'd show the real download link or redirect to a thank-you page.
-        alert("Payment confirmed! Your guide is on its way to your email and WhatsApp.");
+        alert("Payment confirmed! Your guide is on its way to your email.");
       } else {
         btn.disabled = false;
         btn.textContent = "Unlock & Download My Guide 🔓";

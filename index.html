@@ -604,7 +604,7 @@
         <div class="result-summary" id="resultSummary"></div>
       </div>
       <div class="lock-panel">
-        <div class="lock-badge">🔒 Locked — 26 page personalised guide</div>
+        <div class="lock-badge">🔒 Locked - Download your personalised guide</div>
         <div class="blur-lines">
           <div class="bl" style="width:60%"></div>
           <div class="bl"></div>
@@ -832,6 +832,7 @@
     const route = document.querySelector('input[name="route"]:checked');
     const timeline = document.querySelector('input[name="timeline"]:checked');
     const name = document.querySelector('input[name="fullname"]').value.trim();
+    const profession = (document.querySelector('input[name="field"]')||{}).value?.trim();
 
     document.getElementById('resultHeadline').textContent = name ? name.split(' ')[0]+", your roadmap is ready" : "Your roadmap is ready";
     const summary = document.getElementById('resultSummary');
@@ -839,7 +840,7 @@
       <div class="cell"><div class="k">Destination</div><div class="v">${country ? country.value : '—'}</div></div>
       <div class="cell"><div class="k">Route</div><div class="v">${route ? route.value : '—'}</div></div>
       <div class="cell"><div class="k">Timeline</div><div class="v">${timeline ? timeline.value : '—'}</div></div>
-      <div class="cell"><div class="k">Guide pages</div><div class="v">26 pages</div></div>
+      <div class="cell"><div class="k">Profession</div><div class="v">${profession ? profession : '—'}</div></div>
     `;
     document.getElementById('resultPanel').classList.add('active');
     document.getElementById('resultPanel').scrollIntoView({behavior:'smooth', block:'center'});

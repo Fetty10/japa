@@ -36,10 +36,11 @@ export default async function handler(req, res) {
     const fields = {};
     (tx.metadata?.custom_fields || []).forEach(f => { fields[f.variable_name] = f.value; });
     const fullname = fields.full_name || 'there';
+    const amountNaira = tx.amount / 100; // Paystack amount is in kobo; this is what was actually charged, including any fee passed to the customer
 
     // Run side effects in parallel — neither should block the user's response
     const results = await Promise.allSettled([
-      markPaidInSheet(reference, fullname, email),
+      markPaidInSheet(reference, fullname, email, amountNaira),
       sendGuideEmail(email, fullname, reference)
     ]);
     const [sheetResult, emailResult] = results;
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
       verified: true,
       email,
       reference,
-      downloadUrl: process.env.GUIDE_DOWNLOAD_URL
+      downloadUrl: `${process.env.SITE_URL}/api/download-guide?reference=${encodeURIComponent(reference)}`
     });
   } catch (err) {
     console.error('Paystack verification failed:', err);
@@ -58,21 +59,21 @@ export default async function handler(req, res) {
   }
 }
 
-async function markPaidInSheet(reference, fullname, email) {
+async function markPaidInSheet(reference, fullname, email, amount) {
   return fetch(process.env.GAS_WEB_APP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       secret: process.env.GAS_SECRET,
       action: 'markPaid',
-      reference, fullname, email
+      reference, fullname, email, amount
     })
   });
 }
 
 async function sendGuideEmail(email, fullname, reference) {
   const firstName = (fullname || 'there').split(' ')[0];
-  const downloadUrl = process.env.GUIDE_DOWNLOAD_URL;
+  const downloadUrl = `${process.env.SITE_URL}/api/download-guide?reference=${encodeURIComponent(reference)}`;
 
   const html = `
 <!DOCTYPE html>
@@ -92,7 +93,7 @@ async function sendGuideEmail(email, fullname, reference) {
     <tr><td style="padding:36px 32px 4px;">
       <div style="display:inline-block;background-color:#EAF5EE;color:#158443;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:100px;margin-bottom:16px;">✓ Payment Confirmed</div>
       <h1 style="margin:14px 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:23px;line-height:1.3;color:#0B1F3A;">Your Japa Roadmap is ready, ${firstName}</h1>
-      <p style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.65;color:#14181F;">Thank you for your payment. Your complete 26-page relocation guide — covering the UK, USA, Canada, and Australia — is ready to download below.</p>
+      <p style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.65;color:#14181F;">Thank you for your payment. Your complete 60-page relocation guide — covering the UK, USA, Canada, and Australia — is ready to download below.</p>
     </td></tr>
 
     <tr><td style="padding:0 32px 12px;">

@@ -37,10 +37,11 @@ export default async function handler(req, res) {
     (tx.metadata?.custom_fields || []).forEach(f => { fields[f.variable_name] = f.value; });
     const fullname = fields.full_name || 'there';
     const amountNaira = tx.amount / 100; // Paystack amount is in kobo; this is what was actually charged, including any fee passed to the customer
+    const feesNaira = (tx.fees || 0) / 100; // Paystack's cut, regardless of who bears it
 
     // Run side effects in parallel — neither should block the user's response
     const results = await Promise.allSettled([
-      markPaidInSheet(reference, fullname, email, amountNaira),
+      markPaidInSheet(reference, fullname, email, amountNaira, feesNaira),
       sendGuideEmail(email, fullname, reference)
     ]);
     const [sheetResult, emailResult] = results;
@@ -59,14 +60,14 @@ export default async function handler(req, res) {
   }
 }
 
-async function markPaidInSheet(reference, fullname, email, amount) {
+async function markPaidInSheet(reference, fullname, email, amount, fees) {
   return fetch(process.env.GAS_WEB_APP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       secret: process.env.GAS_SECRET,
       action: 'markPaid',
-      reference, fullname, email, amount
+      reference, fullname, email, amount, fees
     })
   });
 }
